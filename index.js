@@ -3,8 +3,6 @@
 
 const Alexa = require("ask-sdk-core");
 const questions = require("./questions");
-const i18n = require("i18next");
-const sprintf = require("i18next-sprintf-postprocessor");
 
 const ANSWER_COUNT = 4;
 const GAME_LENGTH = 5;
@@ -103,9 +101,11 @@ function handleUserGuess(userGaveUp, handlerInput) {
   );
   const { correctAnswerText } = sessionAttributes;
   const requestAttributes = attributesManager.getRequestAttributes();
-  const categoryQuestions = requestAttributes.t("QUESTIONS");
+  const categoryQuestions = questions[sessionAttributes.category.toUpperCase()];
 
   console.log(
+    { sessionAttributes },
+    sessionAttributes.category,
     { correctAnswerText },
     { correctAnswerIndex },
     intent.slots.Answer.value
@@ -116,38 +116,29 @@ function handleUserGuess(userGaveUp, handlerInput) {
       sessionAttributes.correctAnswerIndex
   ) {
     currentScore += 1;
-    speechOutputAnalysis = requestAttributes.t("ANSWER_CORRECT_MESSAGE");
+    speechOutputAnalysis = ANSWER_CORRECT_MESSAGE;
   } else {
     if (!userGaveUp) {
-      speechOutputAnalysis = requestAttributes.t("ANSWER_WRONG_MESSAGE");
+      speechOutputAnalysis = ANSWER_WRONG_MESSAGE;
     }
 
-    speechOutputAnalysis += requestAttributes.t(
-      "CORRECT_ANSWER_MESSAGE",
-      correctAnswerIndex,
-      correctAnswerText
-    );
+    speechOutputAnalysis += `${CORRECT_ANSWER_MESSAGE} ${correctAnswerIndex}: ${correctAnswerText}`;
   }
 
   // Check if we can exit the game session after GAME_LENGTH questions (zero-indexed)
   if (sessionAttributes.currentQuestionIndex === GAME_LENGTH - 1) {
-    speechOutput = userGaveUp ? "" : requestAttributes.t("ANSWER_IS_MESSAGE");
-    speechOutput +=
-      speechOutputAnalysis +
-      requestAttributes.t(
-        "GAME_OVER_MESSAGE",
-        currentScore.toString(),
-        GAME_LENGTH.toString()
-      );
-    console.log({ speechOutput });
+    const GAME_OVER_MESSAGE = getFinalScore(currentScore, GAME_LENGTH);
+    speechOutput = userGaveUp ? "" : `${ANSWER_IS_MESSAGE}`;
+    speechOutput += `${speechOutputAnalysis} ${GAME_OVER_MESSAGE}`;
     return responseBuilder.speak(speechOutput).getResponse();
   }
   currentQuestionIndex += 1;
   correctAnswerIndex = Math.floor(Math.random() * ANSWER_COUNT);
-  console.log({ gameQuestions }, { currentQuestionIndex });
+
   const spokenQuestion = Object.keys(
     categoryQuestions[gameQuestions[currentQuestionIndex]]
   )[0];
+  console.log({ spokenQuestion });
   const roundAnswers = populateRoundAnswers(
     gameQuestions,
     currentQuestionIndex,
@@ -155,23 +146,16 @@ function handleUserGuess(userGaveUp, handlerInput) {
     categoryQuestions
   );
   const questionIndexForSpeech = currentQuestionIndex + 1;
-  let repromptText = requestAttributes.t(
-    "TELL_QUESTION_MESSAGE",
-    questionIndexForSpeech.toString(),
-    spokenQuestion
-  );
+  let repromptText = `${TELL_QUESTION_MESSAGE}  
+    ${questionIndexForSpeech.toString()}. ${spokenQuestion}`;
 
   for (let i = 0; i < ANSWER_COUNT; i += 1) {
     repromptText += `${i + 1}. ${roundAnswers[i]}. `;
   }
 
-  speechOutput += userGaveUp ? "" : requestAttributes.t("ANSWER_IS_MESSAGE");
-  speechOutput +=
-    speechOutputAnalysis +
-    requestAttributes.t("SCORE_IS_MESSAGE", currentScore.toString()) +
-    repromptText;
+  speechOutput += userGaveUp ? "" : `${ANSWER_IS_MESSAGE}`;
+  speechOutput += `${speechOutputAnalysis} ${SCORE_IS_MESSAGE} ${currentScore.toString()} ${repromptText}`;
 
-  console.log({ speechOutput });
   const translatedQuestion =
     categoryQuestions[gameQuestions[currentQuestionIndex]];
   Object.assign(sessionAttributes, {
@@ -187,7 +171,7 @@ function handleUserGuess(userGaveUp, handlerInput) {
   return responseBuilder
     .speak(speechOutput)
     .reprompt(repromptText)
-    .withSimpleCard(requestAttributes.t("GAME_NAME"), repromptText)
+    .withSimpleCard(`${GAME_NAME} ${repromptText}`)
     .getResponse();
 }
 
@@ -210,12 +194,9 @@ function startGame(newGame, handlerInput) {
   const currentQuestionIndex = 0;
   const spokenQuestion = Object.keys(
     categoryQuestions[gameQuestions[currentQuestionIndex]]
-  )[0];
-  let repromptText = requestAttributes.t(
-    "TELL_QUESTION_MESSAGE",
-    "1",
-    spokenQuestion
   );
+  console.log({ spokenQuestion });
+  let repromptText = `${TELL_QUESTION_MESSAGE} ${spokenQuestion}`;
   for (let i = 0; i < ANSWER_COUNT; i += 1) {
     repromptText += `${i + 1}. ${roundAnswers[i]}. `;
   }
@@ -230,6 +211,7 @@ function startGame(newGame, handlerInput) {
     speechOutput: repromptText,
     repromptText,
     currentQuestionIndex,
+    category,
     correctAnswerIndex: correctAnswerIndex + 1,
     questions: gameQuestions,
     score: 0,
@@ -241,19 +223,17 @@ function startGame(newGame, handlerInput) {
   return handlerInput.responseBuilder
     .speak(speechOutput)
     .reprompt(repromptText)
-    .withSimpleCard(requestAttributes.t("GAME_NAME"), repromptText)
+    .withSimpleCard(`${GAME_NAME} ${repromptText}`)
     .getResponse();
 }
 
 function helpTheUser(newGame, handlerInput) {
   const requestAttributes = handlerInput.attributesManager.getRequestAttributes();
   const askMessage = newGame
-    ? requestAttributes.t("ASK_MESSAGE_START")
-    : requestAttributes.t("REPEAT_QUESTION_MESSAGE") +
-      requestAttributes.t("STOP_MESSAGE");
-  const speechOutput =
-    requestAttributes.t("HELP_MESSAGE", GAME_LENGTH) + askMessage;
-  const repromptText = requestAttributes.t("HELP_REPROMPT") + askMessage;
+    ? `${ASK_MESSAGE_START}`
+    : `${REPEAT_QUESTION_MESSAGE} ${STOP_MESSAGE}`;
+  const speechOutput = `${HELP_MESSAGE} ${GAME_LENGTH} ${askMessage}`;
+  const repromptText = `${HELP_REPROMPT} ${askMessage}`;
 
   return handlerInput.responseBuilder
     .speak(speechOutput)
@@ -263,11 +243,10 @@ function helpTheUser(newGame, handlerInput) {
 
 /* jshint -W101 */
 
-// const QUESTIONS= questions.QUESTIONS_EN_US ???
 const GAME_NAME = "Medical quiz";
 const HELP_MESSAGE =
-  "I will ask you %s multiple choice questions. Respond with the number of the answer. For example, say one, two, three, or four. To start a new game at any time, say, start game. ";
-const REPEAT_QUESTION_MESSAGE = "To repeat the last question, say, repeat. ";
+  "Respond with the number of the answer. For example, say one, two, three, or four. To start a new game at any time, say, start game. ";
+const REPEAT_QUESTION_MESSAGE = "To repeat the last question, say, repeat.";
 const ASK_MESSAGE_START = "Would you like to start playing?";
 const HELP_REPROMPT =
   "To give an answer to a question, respond with the number of the answer. ";
@@ -277,17 +256,15 @@ const NO_MESSAGE = "Ok, we'll play another time. Goodbye!";
 const TRIVIA_UNHANDLED = "Try saying a number between 1 and %s";
 const HELP_UNHANDLED = "Say yes to continue, or no to end the game.";
 const START_UNHANDLED = "Say start to start a new game.";
-const NEW_GAME_MESSAGE = "Welcome to %s. ";
+const NEW_GAME_MESSAGE = "Welcome to";
 const WELCOME_MESSAGE =
   "I will ask you a series of questions, try to get as many right as you can. Just say the number of the answer. Let's begin. ";
 const ANSWER_CORRECT_MESSAGE = "correct. ";
 const ANSWER_WRONG_MESSAGE = "wrong. ";
-const CORRECT_ANSWER_MESSAGE = "The correct answer is %s: %s. ";
+const CORRECT_ANSWER_MESSAGE = "The correct answer is";
 const ANSWER_IS_MESSAGE = "That answer is ";
-const TELL_QUESTION_MESSAGE = "Question %s. %s ";
-const GAME_OVER_MESSAGE =
-  "You got %s out of %s questions correct. Thank you for playing!";
-const SCORE_IS_MESSAGE = "Your score is %s. ";
+const TELL_QUESTION_MESSAGE = "Question";
+const SCORE_IS_MESSAGE = "Your score is";
 
 const welcomeMessage = `Welcome to the Medical Quiz!  Choose a category to start. The categories cardivascular, paediactrics or orthopedics.`;
 const startQuizMessage = `OK.  I will ask you a series of questions. `;
@@ -295,61 +272,9 @@ const exitSkillMessage = `Thank you for using the medical quiz!  Let's play agai
 const repromptSpeech = `Which category would you like? You can choose from cardivascular, paediactrics or orthopedics.`;
 const helpMessage = `You can restart the quiz by saying start medical quiz.`;
 
-function getCurrentScore(score, counter) {
-  return `Your current score is ${score} out of ${counter}. `;
-}
-
 function getFinalScore(score, counter) {
   return `Your final score is ${score} out of ${counter}. `;
 }
-const LocalizationInterceptor = {
-  process(handlerInput) {
-    const localizationClient = i18n.use(sprintf).init({
-      lng: handlerInput.requestEnvelope.request.locale,
-      overloadTranslationOptionHandler:
-        sprintf.overloadTranslationOptionHandler,
-      resources: languageString,
-      returnObjects: true
-    });
-
-    const attributes = handlerInput.attributesManager.getRequestAttributes();
-    attributes.t = function(phrase, ...args) {
-      return phrase.replace(/%s/g, match => {});
-    };
-  }
-};
-
-// const LaunchRequest = {
-//   canHandle(handlerInput) {
-//     const { request } = handlerInput.requestEnvelope;
-
-//     return request.type === 'LaunchRequest'
-//       || (request.type === 'IntentRequest'
-//         && request.intent.name === 'AMAZON.StartOverIntent');
-//   },
-//   handle(handlerInput) {
-//     return startGame(true, handlerInput);
-//   },
-// };
-
-// const LaunchRequestHandler = {
-//   canHandle(handlerInput) {
-//     const { request } = handlerInput.requestEnvelope;
-//     console.log({request});
-
-//     return (
-//       request.type === "LaunchRequest" ||
-//       (request.type === "IntentRequest" &&
-//         request.intent.name === "AMAZON.StartOverIntent")
-//     );
-//   },
-//   handle(handlerInput) {
-//     return handlerInput.responseBuilder
-//       .speak(welcomeMessage)
-//       .reprompt(helpMessage)
-//       .getResponse();
-//   }
-// };
 
 const LaunchRequest = {
   canHandle(handlerInput) {
@@ -406,22 +331,19 @@ const UnhandledIntent = {
     const sessionAttributes = handlerInput.attributesManager.getSessionAttributes();
     const requestAttributes = handlerInput.attributesManager.getRequestAttributes();
     if (Object.keys(sessionAttributes).length === 0) {
-      const speechOutput = requestAttributes.t("START_UNHANDLED");
+      const speechOutput = `${START_UNHANDLED}`;
       return handlerInput.attributesManager
         .speak(speechOutput)
         .reprompt(speechOutput)
         .getResponse();
     } else if (sessionAttributes.questions) {
-      const speechOutput = requestAttributes.t(
-        "TRIVIA_UNHANDLED",
-        ANSWER_COUNT.toString()
-      );
+      const speechOutput = `${TRIVIA_UNHANDLED} ${ANSWER_COUNT.toString()}`;
       return handlerInput.attributesManager
         .speak(speechOutput)
         .reprompt(speechOutput)
         .getResponse();
     }
-    const speechOutput = requestAttributes.t("HELP_UNHANDLED");
+    const speechOutput = `${HELP_UNHANDLED}`;
     return handlerInput.attributesManager
       .speak(speechOutput)
       .reprompt(speechOutput)
@@ -504,7 +426,7 @@ const StopIntent = {
   },
   handle(handlerInput) {
     const requestAttributes = handlerInput.attributesManager.getRequestAttributes();
-    const speechOutput = requestAttributes.t("STOP_MESSAGE");
+    const speechOutput = `${STOP_MESSAGE}`;
 
     return handlerInput.responseBuilder
       .speak(speechOutput)
@@ -522,7 +444,7 @@ const CancelIntent = {
   },
   handle(handlerInput) {
     const requestAttributes = handlerInput.attributesManager.getRequestAttributes();
-    const speechOutput = requestAttributes.t("CANCEL_MESSAGE");
+    const speechOutput = `${CANCEL_MESSAGE}`;
 
     return handlerInput.responseBuilder.speak(speechOutput).getResponse();
   }
@@ -537,7 +459,7 @@ const NoIntent = {
   },
   handle(handlerInput) {
     const requestAttributes = handlerInput.attributesManager.getRequestAttributes();
-    const speechOutput = requestAttributes.t("NO_MESSAGE");
+    const speechOutput = `${NO_MESSAGE}`;
     return handlerInput.responseBuilder.speak(speechOutput).getResponse();
   }
 };
@@ -571,6 +493,5 @@ exports.handler = skillBuilder
     SessionEndedRequest,
     UnhandledIntent
   )
-  .addRequestInterceptors(LocalizationInterceptor)
   .addErrorHandlers(ErrorHandler)
   .lambda();
