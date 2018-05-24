@@ -131,6 +131,7 @@ function handleUserGuess(userGaveUp, handlerInput) {
   const spokenQuestion = Object.keys(
     categoryQuestions[gameQuestions[currentQuestionIndex]]
   )[0];
+
   const roundAnswers = populateRoundAnswers(
     gameQuestions,
     currentQuestionIndex,
@@ -139,15 +140,14 @@ function handleUserGuess(userGaveUp, handlerInput) {
   );
   console.log(gameQuestions, roundAnswers);
   const questionIndexForSpeech = currentQuestionIndex + 1;
-  let repromptText = `${TELL_QUESTION_MESSAGE}  
-    ${questionIndexForSpeech.toString()}. ${spokenQuestion}`;
+  let repromptText = `${TELL_QUESTION_MESSAGE} ${questionIndexForSpeech.toString()}. ${spokenQuestion} `;
 
   for (let i = 0; i < ANSWER_COUNT; i += 1) {
     repromptText += `${i + 1}. ${roundAnswers[i]}. `;
   }
 
-  speechOutput += userGaveUp ? "" : `${ANSWER_IS_MESSAGE}`;
-  speechOutput += `${speechOutputAnalysis} ${SCORE_IS_MESSAGE} ${currentScore.toString()} ${repromptText}`;
+  speechOutput = userGaveUp ? "" : `${ANSWER_IS_MESSAGE}`;
+  speechOutput = `${speechOutput} ${speechOutputAnalysis} ${SCORE_IS_MESSAGE} ${currentScore.toString()}. ${repromptText}`;
 
   const categoryQuestion =
     categoryQuestions[gameQuestions[currentQuestionIndex]];
@@ -187,7 +187,7 @@ function startGame(newGame, handlerInput) {
   const spokenQuestion = Object.keys(
     categoryQuestions[gameQuestions[currentQuestionIndex]]
   );
-  let repromptText = `${TELL_QUESTION_MESSAGE} ${spokenQuestion}`;
+  let repromptText = `${TELL_QUESTION_MESSAGE} ${spokenQuestion} `;
   for (let i = 0; i < ANSWER_COUNT; i += 1) {
     repromptText += `${i + 1}. ${roundAnswers[i]}. `;
   }
