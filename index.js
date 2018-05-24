@@ -5,13 +5,13 @@ const Alexa = require("ask-sdk-core");
 const questions = require("./questions");
 
 const ANSWER_COUNT = 4;
-const GAME_LENGTH = 5;
 
 function populateGameQuestions(categoryQuestions) {
   const gameQuestions = [];
   const indexList = [];
   let index = categoryQuestions.length;
-  if (GAME_LENGTH > index) {
+  const gameLength = categoryQuestions.length;
+  if (gameLength > index) {
     throw new Error("Invalid Game Length.");
   }
 
@@ -19,7 +19,7 @@ function populateGameQuestions(categoryQuestions) {
     indexList.push(i);
   }
 
-  for (let j = 0; j < GAME_LENGTH; j += 1) {
+  for (let j = 0; j < gameLength; j += 1) {
     const rand = Math.floor(Math.random() * index);
     index -= 1;
 
@@ -37,7 +37,6 @@ function populateRoundAnswers(
   correctAnswerTargetLocation,
   categoryQuestions
 ) {
-  console.log("inside populateanswers");
   const answers = [];
   const translatedQuestion =
     categoryQuestions[gameQuestionIndexes[correctAnswerIndex]];
@@ -93,6 +92,7 @@ function handleUserGuess(userGaveUp, handlerInput) {
 
   const sessionAttributes = attributesManager.getSessionAttributes();
   const gameQuestions = sessionAttributes.questions;
+  const gameLength = gameQuestions.length;
   let correctAnswerIndex = parseInt(sessionAttributes.correctAnswerIndex, 10);
   let currentScore = parseInt(sessionAttributes.score, 10);
   let currentQuestionIndex = parseInt(
@@ -100,7 +100,6 @@ function handleUserGuess(userGaveUp, handlerInput) {
     10
   );
   const { correctAnswerText } = sessionAttributes;
-  const requestAttributes = attributesManager.getRequestAttributes();
   const categoryQuestions = questions[sessionAttributes.category.toUpperCase()];
 
   console.log(
@@ -125,9 +124,9 @@ function handleUserGuess(userGaveUp, handlerInput) {
     speechOutputAnalysis += `${CORRECT_ANSWER_MESSAGE} ${correctAnswerIndex}: ${correctAnswerText}`;
   }
 
-  // Check if we can exit the game session after GAME_LENGTH questions (zero-indexed)
-  if (sessionAttributes.currentQuestionIndex === GAME_LENGTH - 1) {
-    const GAME_OVER_MESSAGE = getFinalScore(currentScore, GAME_LENGTH);
+  // Check if we can exit the game session after gameLength questions (zero-indexed)
+  if (sessionAttributes.currentQuestionIndex === gameLength - 1) {
+    const GAME_OVER_MESSAGE = getFinalScore(currentScore, gameLength);
     speechOutput = userGaveUp ? "" : `${ANSWER_IS_MESSAGE}`;
     speechOutput += `${speechOutputAnalysis} ${GAME_OVER_MESSAGE}`;
     return responseBuilder.speak(speechOutput).getResponse();
@@ -138,7 +137,6 @@ function handleUserGuess(userGaveUp, handlerInput) {
   const spokenQuestion = Object.keys(
     categoryQuestions[gameQuestions[currentQuestionIndex]]
   )[0];
-  console.log({ spokenQuestion });
   const roundAnswers = populateRoundAnswers(
     gameQuestions,
     currentQuestionIndex,
@@ -176,7 +174,6 @@ function handleUserGuess(userGaveUp, handlerInput) {
 }
 
 function startGame(newGame, handlerInput) {
-  const requestAttributes = handlerInput.attributesManager.getRequestAttributes();
   const category =
     handlerInput.requestEnvelope.request.intent.slots.Category.value;
 
@@ -195,7 +192,6 @@ function startGame(newGame, handlerInput) {
   const spokenQuestion = Object.keys(
     categoryQuestions[gameQuestions[currentQuestionIndex]]
   );
-  console.log({ spokenQuestion });
   let repromptText = `${TELL_QUESTION_MESSAGE} ${spokenQuestion}`;
   for (let i = 0; i < ANSWER_COUNT; i += 1) {
     repromptText += `${i + 1}. ${roundAnswers[i]}. `;
@@ -228,11 +224,10 @@ function startGame(newGame, handlerInput) {
 }
 
 function helpTheUser(newGame, handlerInput) {
-  const requestAttributes = handlerInput.attributesManager.getRequestAttributes();
   const askMessage = newGame
     ? `${ASK_MESSAGE_START}`
     : `${REPEAT_QUESTION_MESSAGE} ${STOP_MESSAGE}`;
-  const speechOutput = `${HELP_MESSAGE} ${GAME_LENGTH} ${askMessage}`;
+  const speechOutput = `${HELP_MESSAGE} ${askMessage}`;
   const repromptText = `${HELP_REPROMPT} ${askMessage}`;
 
   return handlerInput.responseBuilder
@@ -240,8 +235,6 @@ function helpTheUser(newGame, handlerInput) {
     .reprompt(repromptText)
     .getResponse();
 }
-
-/* jshint -W101 */
 
 const GAME_NAME = "Medical quiz";
 const HELP_MESSAGE =
@@ -251,7 +244,6 @@ const ASK_MESSAGE_START = "Would you like to start playing?";
 const HELP_REPROMPT =
   "To give an answer to a question, respond with the number of the answer. ";
 const STOP_MESSAGE = "Would you like to keep playing?";
-const CANCEL_MESSAGE = "Ok, let's play again soon.";
 const NO_MESSAGE = "Ok, we'll play another time. Goodbye!";
 const TRIVIA_UNHANDLED = "Try saying a number between 1 and %s";
 const HELP_UNHANDLED = "Say yes to continue, or no to end the game.";
@@ -265,12 +257,9 @@ const CORRECT_ANSWER_MESSAGE = "The correct answer is";
 const ANSWER_IS_MESSAGE = "That answer is ";
 const TELL_QUESTION_MESSAGE = "Question";
 const SCORE_IS_MESSAGE = "Your score is";
-
-const welcomeMessage = `Welcome to the Medical Quiz!  Choose a category to start. The categories cardivascular, paediactrics or orthopedics.`;
-const startQuizMessage = `OK.  I will ask you a series of questions. `;
-const exitSkillMessage = `Thank you for using the medical quiz!  Let's play again soon!`;
-const repromptSpeech = `Which category would you like? You can choose from cardivascular, paediactrics or orthopedics.`;
-const helpMessage = `You can restart the quiz by saying start medical quiz.`;
+const CHOOSE_CATEGORY = `Welcome to the Medical Quiz!  Choose a category to start. The categories cardivascular, paediactrics or orthopedics.`;
+const CANCEL_MESSAGE = `Thank you for using the medical quiz!  Let's play again soon!`;
+const CATEGORY_PROMPT = `Which category would you like? You can choose from cardivascular, paediactrics or orthopedics.`;
 
 function getFinalScore(score, counter) {
   return `Your final score is ${score} out of ${counter}. `;
@@ -290,8 +279,8 @@ const LaunchRequest = {
   },
   handle(handlerInput) {
     return handlerInput.responseBuilder
-      .speak(welcomeMessage)
-      .reprompt(helpMessage)
+      .speak(CHOOSE_CATEGORY)
+      .reprompt(CATEGORY_PROMPT)
       .getResponse();
   }
 };
@@ -329,7 +318,6 @@ const UnhandledIntent = {
   },
   handle(handlerInput) {
     const sessionAttributes = handlerInput.attributesManager.getSessionAttributes();
-    const requestAttributes = handlerInput.attributesManager.getRequestAttributes();
     if (Object.keys(sessionAttributes).length === 0) {
       const speechOutput = `${START_UNHANDLED}`;
       return handlerInput.attributesManager
@@ -425,7 +413,6 @@ const StopIntent = {
     );
   },
   handle(handlerInput) {
-    const requestAttributes = handlerInput.attributesManager.getRequestAttributes();
     const speechOutput = `${STOP_MESSAGE}`;
 
     return handlerInput.responseBuilder
@@ -443,7 +430,6 @@ const CancelIntent = {
     );
   },
   handle(handlerInput) {
-    const requestAttributes = handlerInput.attributesManager.getRequestAttributes();
     const speechOutput = `${CANCEL_MESSAGE}`;
 
     return handlerInput.responseBuilder.speak(speechOutput).getResponse();
@@ -458,7 +444,6 @@ const NoIntent = {
     );
   },
   handle(handlerInput) {
-    const requestAttributes = handlerInput.attributesManager.getRequestAttributes();
     const speechOutput = `${NO_MESSAGE}`;
     return handlerInput.responseBuilder.speak(speechOutput).getResponse();
   }
