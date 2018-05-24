@@ -1,0 +1,114 @@
+{
+    "interactionModel": {
+        "languageModel": {
+            "invocationName": "medical quiz",
+            "intents": [
+                {
+                    "name": "CategoryIntent",
+                    "slots": [
+                        {
+                            "name": "Category",
+                            "type": "MedicalQuizCategory"
+                        }
+                    ],
+                    "samples": [
+                        "{Category} quiz",
+                        "{Category} questions",
+                        "{Category}",
+                        "play {Category}"
+                    ]
+                },
+                {
+                    "name": "AnswerIntent",
+                    "slots": [
+                        {
+                            "name": "Answer",
+                            "type": "AMAZON.NUMBER"
+                        }
+                    ],
+                    "samples": [
+                        "the answer is {Answer}",
+                        "my answer is {Answer}",
+                        "is it {Answer}",
+                        "{Answer} is my answer",
+                        "{Answer}"
+                    ]
+                },
+                {
+                    "name": "DontKnowIntent",
+                    "slots": [],
+                    "samples": [
+                        "give up",
+                        "not sure",
+                        "pass",
+                        "i don't know",
+                        "don't know",
+                        "skip",
+                        "i don't know that",
+                        "who knows",
+                        "i don't know this question",
+                        "i don't know that one",
+                        "dunno"
+                    ]
+                },
+                {
+                    "name": "AMAZON.StartOverIntent",
+                    "samples": [
+                        "start test",
+                        "start quiz",
+                        "start game",
+                        "new game",
+                        "start",
+                        "start new game"
+                    ]
+                },
+                {
+                    "name": "AMAZON.RepeatIntent",
+                    "samples": []
+                },
+                {
+                    "name": "AMAZON.HelpIntent",
+                    "samples": []
+                },
+                {
+                    "name": "AMAZON.YesIntent",
+                    "samples": []
+                },
+                {
+                    "name": "AMAZON.NoIntent",
+                    "samples": []
+                },
+                {
+                    "name": "AMAZON.StopIntent",
+                    "samples": []
+                },
+                {
+                    "name": "AMAZON.CancelIntent",
+                    "samples": []
+                }
+            ],
+            "types": [
+                {
+                    "name": "MedicalQuizCategory",
+                    "values": [
+                        {
+                            "name": {
+                                "value": "cardiovascular"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "paediatrics"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "orthopedics"
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+}
